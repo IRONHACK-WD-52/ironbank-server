@@ -1,5 +1,7 @@
 const express = require("express");
 const router = express.Router();
+const bcrypt = require("bcryptjs");
+const saltRounds = 10;
 
 const AccountModel = require("../models/Account.model");
 
@@ -85,21 +87,111 @@ router.put(
   attachCurrentUser,
   async (req, res, next) => {
     try {
+      const { id } = req.params;
+      const { pin } = req.body;
 
-      const {id} = req.params;
-      const {pin} = req.body;
+      // Criptografando o PIN do cartão por segurança
+      const salt = bcrypt.genSaltSync(saltRounds);
+      const hashedPin = bcrypt.hashSync(pin, salt);
 
       // Gerando um numero de cartão aleatório sempre com 16 caracteres
-      const generatedCardNumber = String(Math.floor(1000000000000000 + Math.random() * 9999999999999999)).slice(-16);
+      const generatedCardNumber = String(
+        Math.floor(1000000000000000 + Math.random() * 9999999999999999)
+      ).slice(-16);
 
       // Dada a data de hoje, some 5 anos e extraia somente o mês e o ano
-      const generatedValidThru;
+
+      // Salva a data de agora
+      const now = new Date();
+      // Soma 5 anos na data de agora
+      now.setFullYear(now.getFullYear() + 5);
+
+      // Extrai o mês e adiciona 0 a esquerda se necessário (para meses antes de outubro)
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      // Pega somente os 2 últimos dígitos do ano
+      const year = String(now.getYear()).slice(-2);
+
+      // Concatena o mês com o ano separando com uma barra
+      const generatedValidThru = `${month}/${year}`;
 
       // Gerando um codigo de segurança aleatório sempre com 3 caracteres
-      const generatedSecurityCode = String(Math.floor(100 + Math.random() * 999)).slice(-3);
+      const generatedSecurityCode = String(
+        Math.floor(100 + Math.random() * 999)
+      ).slice(-3);
 
+      // Adicionando um novo elemento na array de cartões dentro do banco
+      const updatedAccount = await AccountModel.findOneAndUpdate(
+        { _id: id },
+        {
+          $push: {
+            cards: {
+              pin: hashedPin,
+              number: generatedCardNumber,
+              validThru: generatedValidThru,
+              securityCode: generatedSecurityCode,
+            },
+          },
+        },
+        { new: true }
+      );
+
+      if (!updatedAccount) {
+        return res.status(404).json({ error: "Conta não encontrada" });
+      }
+
+      return res.status(200).json(updatedAccount);
     } catch (err) {
-      next(err)
+      next(err);
+    }
+  }
+);
+
+// Deletar um cartão
+router.put(
+  "/account/:id/delete-card/:cardId",
+  isAuthenticated,
+  attachCurrentUser,
+  async (req, res, next) => {
+    try {
+      const { id, cardId } = req.params;
+
+      const updatedAccount = await AccountModel.findOneAndUpdate(
+        { _id: id },
+        {
+          $pull: { cards: { _id: cardId } },
+        },
+        { new: true }
+      );
+
+      if (!updatedAccount) {
+        return res.status(404).json({ error: "Conta não encontrada" });
+      }
+
+      return res.status(200).json(updatedAccount);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// Deletar uma conta
+router.delete(
+  "/account/:id",
+  isAuthenticated,
+  attachCurrentUser,
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+
+      const deletionResult = await AccountModel.deleteOne({ _id: id });
+
+      if (deletionResult.n < 1) {
+        return res.status(404).json({ error: "Conta não encontrada." });
+      }
+
+      return res.status(200).json({});
+    } catch (err) {
+      next(err);
     }
   }
 );
