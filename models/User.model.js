@@ -10,12 +10,24 @@ const UserSchema = new Schema({
     lowercase: true,
   },
   passwordHash: { type: String, required: true },
-  role: {
+  profilePictureUrl: { type: String, trim: true },
+  address: new Schema({
+    street: String,
+    neighbourhood: String,
+    city: String,
+    state: String,
+    postalCode: String,
+    number: String,
+  }),
+  profession: { type: String, trim: true, required: true },
+  maritalStatus: {
     type: String,
-    enum: ["ADMIN", "USER"],
     required: true,
-    default: "USER",
+    enum: ["Casado(a)", "Divorciado(a)", "Solteiro(a)", "Viuvo(a)"],
   },
+  birthDate: { type: Date, required: true },
+  phoneNumber: { type: String, trim: true },
+  document: { type: String, required: true, trim: true },
 });
 
 const UserModel = model("User", UserSchema);

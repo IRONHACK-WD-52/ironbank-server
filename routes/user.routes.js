@@ -116,4 +116,32 @@ router.get("/profile", isAuthenticated, attachCurrentUser, (req, res) => {
   }
 });
 
+router.put(
+  "/profile",
+  isAuthenticated,
+  attachCurrentUser,
+  async (req, res, next) => {
+    try {
+      // Buscar o usuário logado que está disponível através do middleware attachCurrentUser
+      const loggedInUser = req.currentUser;
+
+      if (req.body.password) {
+        return res.status(400).json({
+          error: "O campo senha não pode ser alterado por segurança!",
+        });
+      }
+
+      const updatedUser = await UserModel.findOneAndUpdate(
+        { _id: loggedInUser._id },
+        { $set: { ...req.body } },
+        { new: true }
+      );
+
+      return res.status(200).json(updatedUser);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 module.exports = router;
