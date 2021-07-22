@@ -16,7 +16,15 @@ router.post("/signup", async (req, res) => {
 
   try {
     // Recuperar a senha que está vindo do corpo da requisição
-    const { password } = req.body;
+    const { password, email } = req.body;
+
+    // Verifica se o email é válido
+    if (!email || !email.match(/[^@ \t\r\n]+@[^@ \t\r\n]+\.[^@ \t\r\n]+/g)) {
+      // O código 400 significa Bad Request
+      return res.status(400).json({
+        error: "E-mail é um campo obrigatório e deve ser um e-mail válido",
+      });
+    }
 
     // Verifica se a senha não está em branco ou se a senha não é complexa o suficiente
     if (
@@ -27,7 +35,8 @@ router.post("/signup", async (req, res) => {
     ) {
       // O código 400 significa Bad Request
       return res.status(400).json({
-        msg: "Password is required and must have at least 8 characters, uppercase and lowercase letters, numbers and special characters.",
+        error:
+          "Senha é obrigatória e deve conter ao menos uma letra maiúscula, uma minúscula, um número e um caractere especial e ter 8 caracteres de tamanho.",
       });
     }
 
@@ -67,7 +76,7 @@ router.post("/login", async (req, res) => {
     if (!user) {
       return res
         .status(400)
-        .json({ msg: "This email is not yet registered in our website;" });
+        .json({ error: "Esse e-mail ainda não é cadastrado em nosso app" });
     }
 
     // Verificar se a senha do usuário pesquisado bate com a senha recebida pelo formulário
@@ -87,11 +96,11 @@ router.post("/login", async (req, res) => {
       });
     } else {
       // 401 Significa Unauthorized
-      return res.status(401).json({ msg: "Wrong password or email" });
+      return res.status(401).json({ error: "E-mail ou senha incorreto." });
     }
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ msg: JSON.stringify(err) });
+    return res.status(500).json({ error: JSON.stringify(err) });
   }
 });
 
